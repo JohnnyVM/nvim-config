@@ -83,6 +83,10 @@ vim.o.autoread = true
 ------------------------------------------------------------
 -- Opencode
 ------------------------------------------------------------
+require('snacks').setup({
+    input = { enabled = true },
+    picker = { enabled = true },
+})
 -- Your configuration, if any — see `lua/opencode/config.lua`
 vim.g.opencode_opts = {
   provider = {
