@@ -24,7 +24,6 @@ Plug('kkoomen/vim-doge', { ['do'] = vim.fn['doge#install'] })
 Plug 'mechatroner/rainbow_csv'
 Plug('fatih/vim-go', { ['do'] = vim.fn['GoUpdateBinaries'] })
 Plug 'rust-lang/rust.vim'
-Plug 'sbdchd/neoformat'
 Plug 'bling/vim-bufferline'
 Plug 'will133/vim-dirdiff'
 
@@ -262,6 +261,9 @@ cmp.setup({
   },
 })
 
+-- yaml
+vim.lsp.config("yamlls", { capabilities = capabilities })
+vim.lsp.enable("yamlls")
 -- bash
 vim.lsp.config("bashls", { capabilities = capabilities })
 vim.lsp.enable("bashls")
@@ -335,15 +337,6 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.opt.foldlevel = 99
     end
   end,
-})
-
-------------------------------------------------------------
--- Formatting
-------------------------------------------------------------
-vim.g.neoformat_try_node_exe = 1
-vim.api.nvim_create_autocmd("BufWritePre", {
-  pattern = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
-  command = "NeoFormat prettier",
 })
 
 ------------------------------------------------------------
