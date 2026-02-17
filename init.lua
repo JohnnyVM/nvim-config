@@ -11,9 +11,13 @@ Plug 'ellisonleao/gruvbox.nvim'
 -- TagBar
 Plug 'preservim/tagbar'
 
--- ctrlp
-Plug 'ctrlpvim/ctrlp.vim'
 Plug 'ludovicchabant/vim-gutentags'
+
+-- search
+-- ctrlp
+-- Plug 'ctrlpvim/ctrlp.vim'
+Plug('junegunn/fzf', { ['do'] = vim.fn['fzf#install()'] })
+Plug 'junegunn/fzf.vim'
 
 -- Tree-sitter
 Plug('nvim-treesitter/nvim-treesitter', { ['do'] = ':TSUpdate' })
@@ -45,31 +49,41 @@ vim.fn['plug#end']()
 
 vim.g.copilot_enabled = 0
 
-vim.g.ctrlp_working_path_mode = 'ra'
-vim.g.ctrlp_cache_dir = '~/.cache/ctrlp'
-vim.g.ctrlp_extensions = {'tag', 'buffertag'}
-vim.g.ctrlp_user_command = {'.git', 'cd %s && git ls-files -co --exclude-standard'}
-vim.g.ctrlp_custom_ignore = {
-  dir = [[\v(node_modules|\.git|dist|build|\.cache)$]],
-  file = [[\v\.(o|so|dll|pyc|lock|sum)$]],
-  link = 0,
-}
-vim.g.gutentags_ctags_exclude = {
-  "node_modules",
-  ".git",
-  "dist",
-  "build",
-  "target",
-  ".cache",
-}
-vim.g.gutentags_ctags_extra_args = {
-  "--exclude=node_modules",
-  "--exclude=.git",
-  "--exclude=dist",
-  "--exclude=build",
-  "--exclude=target",
-  "--exclude=.cache",
-}
+-- vim-go
+vim.g.go_def_mode='gopls'
+vim.g.go_info_mode='gopls'
+
+vim.keymap.set("n", "<C-f>", function()
+  vim.cmd("Rg")
+end, { noremap = true, silent = true })
+vim.keymap.set("n", "<C-b>", "<cmd>Buffers<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<C-p>", "<cmd>Files<CR>", { silent = true })
+
+--vim.g.ctrlp_working_path_mode = 'ra'
+--vim.g.ctrlp_cache_dir = '~/.cache/ctrlp'
+--vim.g.ctrlp_extensions = {'tag'}
+--vim.g.ctrlp_user_command = {'.git', 'cd %s && git ls-files -co --exclude-standard'}
+--vim.g.ctrlp_custom_ignore = {
+--  dir = [[\v(node_modules|\.git|dist|build|\.cache)$]],
+--  file = [[\v\.(o|so|dll|pyc|lock|sum)$]],
+--  link = 0,
+--}
+--vim.g.gutentags_ctags_exclude = {
+--  "node_modules",
+--  ".git",
+--  "dist",
+--  "build",
+--  "target",
+--  ".cache",
+--}
+--vim.g.gutentags_ctags_extra_args = {
+--  "--exclude=node_modules",
+--  "--exclude=.git",
+--  "--exclude=dist",
+--  "--exclude=build",
+--  "--exclude=target",
+--  "--exclude=.cache",
+--}
 
 vim.opt.number = true
 vim.g.netrw_keepdir = 1
@@ -89,9 +103,44 @@ require('snacks').setup({
 -- Your configuration, if any — see `lua/opencode/config.lua`
 vim.g.opencode_opts = {
   provider = {
-    enabled = "terminal"
+    enabled = "terminal",
   }
 }
+
+local opencode = require("opencode")
+local original_toggle = opencode.toggle
+
+opencode.toggle = function(...)
+  local before = vim.api.nvim_list_wins()
+
+  original_toggle(...)
+
+  vim.schedule(function()
+    local after = vim.api.nvim_list_wins()
+
+    -- Find the new window
+    local new_win
+    for _, win in ipairs(after) do
+      if not vim.tbl_contains(before, win) then
+        new_win = win
+        break
+      end
+    end
+
+    if not new_win then
+      return
+    end
+
+    local width = math.floor(vim.o.columns * 0.3)
+
+    -- Move to far right of layout
+    vim.api.nvim_set_current_win(new_win)
+    vim.cmd("wincmd L")
+
+    -- Resize to 20%
+    vim.api.nvim_win_set_width(new_win, width)
+  end)
+end
 
 -- Keymaps (same as your snippet)
 vim.keymap.set({ "n", "x" }, "<C-a>", function()
@@ -120,8 +169,8 @@ end, { desc = "opencode half page down" })
 		
 vim.keymap.set({ "n", "t" }, "<C-.>", function()
   require("opencode").toggle()
-end, { desc = "Toggle opencode" })
-	  
+end)
+
 ---- Keep these ONLY if you really want <C-a>/<C-x> for opencode,
 ---- because they override increment/decrement muscle memory.
 --vim.keymap.set("n", "+", "<C-a>", { desc = "Increment", noremap = true })
@@ -224,16 +273,16 @@ vim.opt.tabstop = 4      -- how wide a <Tab> looks
 vim.opt.shiftwidth = 4  -- how wide auto-indent is
 vim.opt.softtabstop = 4 -- how many spaces <Tab> feels like
 
-require("FindUtils")
-require("trans")
+--require("FindUtils")
+--require("trans")
 -- Abre ":" con :FindAll ya escrito y espera tu entrada
-vim.keymap.set("n", "<C-f>", function()
-  local keys = vim.api.nvim_replace_termcodes(":FindBuf ", true, false, true)
-  vim.api.nvim_feedkeys(keys, "n", false)
-end, { desc = "Prefill :FindBuf and wait for input" })
+--vim.keymap.set("n", "<C-f>", function()
+--  local keys = vim.api.nvim_replace_termcodes(":FindBuf ", true, false, true)
+--  vim.api.nvim_feedkeys(keys, "n", false)
+--end, { desc = "Prefill :FindBuf and wait for input" })
 
-require("SaveBuffPath")
-vim.api.nvim_set_keymap('n', '<leader>yp', ':SavePath<CR>:UsePath<CR>', { noremap = true, silent = true })
+--require("SaveBuffPath")
+--vim.api.nvim_set_keymap('n', '<leader>yp', ':SavePath<CR>:UsePath<CR>', { noremap = true, silent = true })
 ------------------------------------------------------------
 -- LSP (NEW API)
 ------------------------------------------------------------
