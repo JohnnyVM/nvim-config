@@ -30,6 +30,7 @@ Plug('fatih/vim-go', { ['do'] = vim.fn['GoUpdateBinaries'] })
 Plug 'rust-lang/rust.vim'
 Plug 'bling/vim-bufferline'
 Plug 'will133/vim-dirdiff'
+Plug 'tpope/vim-fugitive'
 
 -- AI
 --Plug 'github/copilot.vim'
