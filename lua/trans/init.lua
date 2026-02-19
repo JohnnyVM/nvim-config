@@ -79,34 +79,51 @@ end
 --   :Trans              – translate visual selection or current line
 --   :Trans <text>       – translate the given text
 --   :Trans/<lang>       – translate to a specific language (e.g. :Trans/es)
+--   :Trans/i            – translate visual selection or current line, replacing it in-place
+--   :Trans/<lang>/i     – translate to a specific language and replace in-place
 --   :'<,'>Trans         – translate the selected range
+--   :'<,'>Trans/i       – translate the selected range and replace it in-place
 vim.api.nvim_create_user_command("Trans", function(opts)
   local text = nil
   local target_lang = "en"
+  local inplace = false
 
-  -- Parse optional language suffix: Trans/es
+  -- Parse flags from args: /i (in-place replacement) and /lang (target language).
+  -- Flags can appear in any order, e.g. :Trans/es/i or :Trans/i/es.
   local args = opts.args or ""
-  local lang_override = args:match("^/(%a+)%s*$")
-  if lang_override then
-    target_lang = lang_override
-    args = ""
+  for flag in args:gmatch("/(%a+)") do
+    if flag == "i" then
+      inplace = true
+    else
+      target_lang = flag
+    end
   end
+  -- Strip all /flag tokens; whatever remains is treated as literal text to translate.
+  args = (args:gsub("/%a+", "")):match("^%s*(.-)%s*$") or ""
+
+  -- Track the source of text so we know what to replace when inplace=true.
+  -- Possible values: "range", "visual", "line", "arg"
+  local source = nil
 
   -- Determine text source (priority: range > args > visual selection > current line)
   if opts.range == 2 then
     -- Explicit line range (e.g. :'<,'>Trans)
     local lines = vim.api.nvim_buf_get_lines(0, opts.line1 - 1, opts.line2, false)
     text = table.concat(lines, "\n")
+    source = "range"
   elseif args ~= "" then
     text = args
+    source = "arg"
   else
     -- Try last visual selection
     local vis = get_visual_selection()
     if vis and vis ~= "" then
       text = vis
+      source = "visual"
     else
       -- Fall back to current line
       text = vim.api.nvim_get_current_line()
+      source = "line"
     end
   end
 
@@ -118,9 +135,25 @@ vim.api.nvim_create_user_command("Trans", function(opts)
   local result, err = M.translate(text, target_lang)
   if err then
     vim.notify("[Trans] Error: " .. err, vim.log.levels.ERROR)
+    return
+  end
+
+  if inplace and source ~= "arg" then
+    local new_lines = vim.split(result, "\n", { plain = true })
+    if source == "range" then
+      vim.api.nvim_buf_set_lines(0, opts.line1 - 1, opts.line2, false, new_lines)
+    elseif source == "visual" then
+      local s = vim.fn.getpos("'<")
+      local e = vim.fn.getpos("'>")
+      -- nvim_buf_set_text uses 0-based rows and byte columns; '>' col is inclusive.
+      vim.api.nvim_buf_set_text(0, s[2] - 1, s[3] - 1, e[2] - 1, e[3], new_lines)
+    elseif source == "line" then
+      local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+      vim.api.nvim_buf_set_lines(0, row, row + 1, false, new_lines)
+    end
   else
     vim.notify(result, vim.log.levels.INFO)
   end
-end, { nargs = "*", range = true, desc = "Translate text to English (or :Trans/<lang>)" })
+end, { nargs = "*", range = true, desc = "Translate text (or :Trans/<lang>, :Trans/i to replace in-place)" })
 
 return M
