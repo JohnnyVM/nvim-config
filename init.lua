@@ -274,7 +274,7 @@ vim.opt.shiftwidth = 4  -- how wide auto-indent is
 vim.opt.softtabstop = 4 -- how many spaces <Tab> feels like
 
 --require("FindUtils")
---require("trans")
+require("trans")
 -- Abre ":" con :FindAll ya escrito y espera tu entrada
 --vim.keymap.set("n", "<C-f>", function()
 --  local keys = vim.api.nvim_replace_termcodes(":FindBuf ", true, false, true)
