@@ -30,6 +30,7 @@ Plug('fatih/vim-go', { ['do'] = vim.fn['GoUpdateBinaries'] })
 Plug 'rust-lang/rust.vim'
 Plug 'bling/vim-bufferline'
 Plug 'will133/vim-dirdiff'
+Plug 'tpope/vim-fugitive'
 
 -- AI
 --Plug 'github/copilot.vim'
@@ -273,13 +274,7 @@ vim.opt.tabstop = 4      -- how wide a <Tab> looks
 vim.opt.shiftwidth = 4  -- how wide auto-indent is
 vim.opt.softtabstop = 4 -- how many spaces <Tab> feels like
 
---require("FindUtils")
---require("trans")
--- Abre ":" con :FindAll ya escrito y espera tu entrada
---vim.keymap.set("n", "<C-f>", function()
---  local keys = vim.api.nvim_replace_termcodes(":FindBuf ", true, false, true)
---  vim.api.nvim_feedkeys(keys, "n", false)
---end, { desc = "Prefill :FindBuf and wait for input" })
+require("trans")
 
 --require("SaveBuffPath")
 --vim.api.nvim_set_keymap('n', '<leader>yp', ':SavePath<CR>:UsePath<CR>', { noremap = true, silent = true })
