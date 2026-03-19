@@ -57,8 +57,14 @@ vim.g.go_info_mode='gopls'
 vim.keymap.set("n", "<C-f>", function()
   vim.cmd("Rg")
 end, { noremap = true, silent = true })
+vim.keymap.set("n", "<C-t>", function()
+  vim.cmd("Tags")
+end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-b>", "<cmd>Buffers<CR>", { noremap = true, silent = true })
-vim.keymap.set("n", "<C-p>", "<cmd>Files<CR>", { silent = true })
+vim.keymap.set("n", "<C-p>", function()
+  if vim.bo.buftype == "terminal" or vim.bo.filetype == "opencode" then return end
+  vim.fn["fzf#vim#files"]("", { options = { "--delimiter=/", "--with-nth=-1" } }, 0)
+end, { silent = true })
 
 --vim.g.ctrlp_working_path_mode = 'ra'
 --vim.g.ctrlp_cache_dir = '~/.cache/ctrlp'
