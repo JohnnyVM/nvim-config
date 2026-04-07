@@ -60,7 +60,43 @@ end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-t>", function()
   vim.cmd("Tags")
 end, { noremap = true, silent = true })
-vim.keymap.set("n", "<C-b>", "<cmd>Buffers<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<C-b>", function()
+  -- Dump terminal buffer contents to temp files so the fzf preview can read them.
+  -- Also write a lookup file: <term-name> TAB <bufnr>
+  local lookup = {}
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.fn.buflisted(bufnr) == 1 and vim.bo[bufnr].buftype == "terminal" then
+      local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+      while #lines > 0 and lines[#lines] == "" do table.remove(lines) end
+      vim.fn.writefile(lines, "/tmp/nvim_term_buf_" .. bufnr)
+      local name = vim.api.nvim_buf_get_name(bufnr)
+      table.insert(lookup, name .. "\t" .. bufnr)
+    end
+  end
+  vim.fn.writefile(lookup, "/tmp/nvim_term_lookup")
+
+  local preview_script = vim.fn.expand("~/.vim/plugged/fzf.vim/bin/preview.sh")
+  -- {1} is the target field (file path or term:// URI, possibly with :linenum suffix).
+  -- Strip the trailing :digits to recover the buffer name, look it up, then cat the dump.
+  local preview_cmd = table.concat({
+    "target={1};",
+    "if [[ \"$target\" == term://* ]]; then",
+    "  base=$(echo \"$target\" | sed 's/:[0-9]*$//');",
+    "  bufnr=$(grep -F \"$base\" /tmp/nvim_term_lookup 2>/dev/null | cut -f2 | head -1);",
+    "  [[ -n \"$bufnr\" ]] && tail -\"$FZF_PREVIEW_LINES\" /tmp/nvim_term_buf_\"$bufnr\"",
+    "    || echo '[Terminal buffer content unavailable]';",
+    "elif [[ -z \"$target\" ]]; then",
+    "  echo '[No Name buffer]';",
+    "else",
+    "  bash " .. preview_script .. " \"$target\";",
+    "fi",
+  }, " ")
+
+  vim.fn["fzf#vim#buffers"]("", {
+    placeholder = "{1}",
+    options = { "--preview", preview_cmd },
+  }, 0)
+end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-p>", function()
   if vim.bo.buftype == "terminal" or vim.bo.filetype == "opencode" then return end
   vim.fn["fzf#vim#files"]("", { options = { "--delimiter=/", "--with-nth=-1" } }, 0)
