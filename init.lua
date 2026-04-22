@@ -58,7 +58,9 @@ vim.keymap.set("n", "<C-f>", function()
   vim.cmd("Rg")
 end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-t>", function()
-  vim.cmd("Tags")
+  if vim.bo.buftype ~= "terminal" then
+    vim.cmd("Tags")
+  end
 end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-b>", function()
   -- Dump terminal buffer contents to temp files so the fzf preview can read them.
