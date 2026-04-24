@@ -42,10 +42,6 @@ Plug 'neovim/nvim-lspconfig'
 Plug "hrsh7th/nvim-cmp"
 Plug "hrsh7th/cmp-nvim-lsp"
 
--- opencode
-Plug "folke/snacks.nvim"
-Plug 'NickvanDyke/opencode.nvim'
-
 vim.fn['plug#end']()
 
 vim.g.copilot_enabled = 0
@@ -100,7 +96,7 @@ vim.keymap.set("n", "<C-b>", function()
   }, 0)
 end, { noremap = true, silent = true })
 vim.keymap.set("n", "<C-p>", function()
-  if vim.bo.buftype == "terminal" or vim.bo.filetype == "opencode" then return end
+  if vim.bo.buftype == "terminal" then return end
   vim.fn["fzf#vim#files"]("", { options = { "--delimiter=/", "--with-nth=-1" } }, 0)
 end, { silent = true })
 
@@ -135,135 +131,6 @@ vim.g.netrw_keepdir = 1
 vim.g.netrw_liststyle = 3
 vim.g.netrw_browse_split = 4
 
--- Required for `opts.events.reload`
-vim.o.autoread = true
-
-------------------------------------------------------------
--- Opencode
-------------------------------------------------------------
-require('snacks').setup({
-    input = { enabled = true },
-    picker = { enabled = true },
-})
--- Your configuration, if any — see `lua/opencode/config.lua`
-vim.g.opencode_opts = {
-  provider = {
-    enabled = "terminal",
-  }
-}
-
-local opencode = require("opencode")
-local original_toggle = opencode.toggle
-
-opencode.toggle = function(...)
-  local before = vim.api.nvim_list_wins()
-
-  original_toggle(...)
-
-  vim.schedule(function()
-    local after = vim.api.nvim_list_wins()
-
-    -- Find the new window
-    local new_win
-    for _, win in ipairs(after) do
-      if not vim.tbl_contains(before, win) then
-        new_win = win
-        break
-      end
-    end
-
-    if not new_win then
-      return
-    end
-
-    local width = math.floor(vim.o.columns * 0.3)
-
-    -- Move to far right of layout
-    vim.api.nvim_set_current_win(new_win)
-    vim.cmd("wincmd L")
-
-    -- Resize to 20%
-    vim.api.nvim_win_set_width(new_win, width)
-  end)
-end
-
--- Keymaps (same as your snippet)
-vim.keymap.set({ "n", "x" }, "<C-a>", function()
-  require("opencode").ask("@this: ", { submit = true })
-end, { desc = "Ask opencode" })
-
-vim.keymap.set({ "n", "x" }, "<C-x>", function()
-  require("opencode").select()
-end, { desc = "Execute opencode action…" })
-
-vim.keymap.set({ "n", "x" }, "go", function()
-  return require("opencode").operator("@this ")
-end, { expr = true, desc = "Add range to opencode" })
-
-vim.keymap.set("n", "goo", function()
-  return require("opencode").operator("@this ") .. "_"
-end, { expr = true, desc = "Add line to opencode" })
-
-vim.keymap.set("n", "<S-C-u>", function()
-  require("opencode").command("session.half.page.up")
-end, { desc = "opencode half page up" })
-
-vim.keymap.set("n", "<S-C-d>", function()
-  require("opencode").command("session.half.page.down")
-end, { desc = "opencode half page down" })
-		
-vim.keymap.set({ "n", "t" }, "<C-.>", function()
-  require("opencode").toggle()
-end)
-
----- Keep these ONLY if you really want <C-a>/<C-x> for opencode,
----- because they override increment/decrement muscle memory.
---vim.keymap.set("n", "+", "<C-a>", { desc = "Increment", noremap = true })
---vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement", noremap = true })
-
--- Double Esc: exit terminal mode
-vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], {
-  buffer = buf,
-  noremap = true,
-  silent = true,
-})
-------------------------------------------------------------
--- Terminal mode
-------------------------------------------------------------
--- Handle `opencode` events
-vim.api.nvim_create_autocmd("User", {
-  pattern = "OpencodeEvent:*", -- Optionally filter event types
-  callback = function(args)
-    ---@type opencode.cli.client.Event
-    local event = args.data.event
-    ---@type number
-    local port = args.data.port
-
-    -- See the available event types and their properties
-    -- vim.notify(vim.inspect(event))
-    -- Do something useful
-    if event.type == "session.idle" then
-      vim.notify("`opencode` finished responding")
-    end
-  end,
-})
-
-vim.api.nvim_create_autocmd("TermOpen", {
-  callback = function(args)
-    local buf = args.buf
-    local name = vim.api.nvim_buf_get_name(buf)
-
-    if name:match("opencode") then
-      -- Single Esc: send Esc to the terminal
-		vim.keymap.set("t", "<Esc>", "<Esc>", {
-		  buffer = buf,
-		  noremap = true,
-		  silent = true,
-		})
-
-    end
-  end,
-})
 ------------------------------------------------------------
 -- Normal mode
 ------------------------------------------------------------
