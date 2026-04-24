@@ -152,6 +152,16 @@ vim.g.netrw_liststyle = 3
 vim.g.netrw_browse_split = 4
 
 ------------------------------------------------------------
+-- Terminal mode
+------------------------------------------------------------
+-- Double Esc: exit terminal mode
+vim.keymap.set("t", "<Esc><Esc>", [[<C-\><C-n>]], {
+  buffer = buf,
+  noremap = true,
+  silent = true,
+})
+
+------------------------------------------------------------
 -- Normal mode
 ------------------------------------------------------------
 vim.keymap.set("n", "<F7>", function()
