@@ -34,6 +34,8 @@ Plug 'tpope/vim-fugitive'
 
 -- AI
 --Plug 'github/copilot.vim'
+Plug 'nvim-lua/plenary.nvim'
+Plug 'olimorris/codecompanion.nvim'
 
 -- LSP definitions (still required)
 Plug 'neovim/nvim-lspconfig'
@@ -45,6 +47,29 @@ Plug "hrsh7th/cmp-nvim-lsp"
 vim.fn['plug#end']()
 
 vim.g.copilot_enabled = 0
+
+require("codecompanion").setup({
+  strategies = {
+    chat = {
+      adapter = "opencode",
+    },
+    inline = {
+      adapter = "opencode",
+    },
+  },
+  adapters = {
+    opencode = function()
+      return require("codecompanion.adapters").extend("openai_compatible", {
+        name = "opencode",
+        schema = {
+          model = {
+            default = "claude-sonnet-4",
+          },
+        },
+      })
+    end,
+  },
+})
 
 -- vim-go
 vim.g.go_def_mode='gopls'
