@@ -61,11 +61,6 @@ require("codecompanion").setup({
     opencode = function()
       return require("codecompanion.adapters").extend("openai_compatible", {
         name = "opencode",
-        schema = {
-          model = {
-            default = "claude-sonnet-4",
-          },
-        },
       })
     end,
   },
