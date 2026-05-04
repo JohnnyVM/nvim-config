@@ -309,6 +309,7 @@ vim.lsp.enable("gopls")
 ------------------------------------------------------------
 local ok, ts_config = pcall(require, "nvim-treesitter.config")
 ts_config.setup({
+  parser_install_dir = "~/.local/share/nvim/site/parser",
   highlight = { enable = true },
   indent = { enable = true },
 })
@@ -323,7 +324,7 @@ vim.api.nvim_create_autocmd("FileType", {
     end
   end,
 })
-
+vim.opt.runtimepath:append("~/.local/share/nvim/site")
 ------------------------------------------------------------
 -- Markdown spell
 ------------------------------------------------------------
