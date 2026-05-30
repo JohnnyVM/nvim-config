@@ -337,8 +337,38 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 ------------------------------------------------------------
--- PDF viewer via pdftotext
+-- PDF viewer via pdftotext (with OCR fallback for image-based PDFs)
 ------------------------------------------------------------
+local function pdf_ocr(pdf)
+  if vim.fn.executable("ocrmypdf") == 1 then
+    vim.notify("OCR running with ocrmypdf, please wait…", vim.log.levels.INFO)
+    local tmp = vim.fn.tempname() .. ".pdf"
+    vim.fn.system("ocrmypdf --force-ocr " .. vim.fn.shellescape(pdf) .. " " .. vim.fn.shellescape(tmp) .. " 2>/dev/null")
+    if vim.v.shell_error == 0 then
+      local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(tmp) .. " -")
+      vim.fn.delete(tmp)
+      if #lines > 0 then return lines end
+    end
+  end
+
+  if vim.fn.executable("tesseract") == 1 and vim.fn.executable("pdftoppm") == 1 then
+    vim.notify("OCR running with tesseract, please wait…", vim.log.levels.INFO)
+    local tmpdir = vim.fn.tempname()
+    vim.fn.mkdir(tmpdir, "p")
+    vim.fn.system("pdftoppm -r 300 " .. vim.fn.shellescape(pdf) .. " " .. vim.fn.shellescape(tmpdir .. "/page"))
+    local pages = vim.fn.glob(tmpdir .. "/page-*.ppm", false, true)
+    table.sort(pages)
+    local lines = {}
+    for _, page in ipairs(pages) do
+      vim.list_extend(lines, vim.fn.systemlist("tesseract " .. vim.fn.shellescape(page) .. " stdout 2>/dev/null"))
+    end
+    vim.fn.delete(tmpdir, "rf")
+    if #lines > 0 then return lines end
+  end
+
+  return { "[No extractable text — install ocrmypdf or tesseract+pdftoppm for OCR support]" }
+end
+
 vim.api.nvim_create_autocmd("BufReadCmd", {
   pattern = "*.pdf",
   callback = function(args)
@@ -347,15 +377,15 @@ vim.api.nvim_create_autocmd("BufReadCmd", {
     local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(pdf) .. " -")
     if vim.v.shell_error ~= 0 then
       vim.notify("pdftotext failed (exit=" .. vim.v.shell_error .. "): " .. pdf, vim.log.levels.ERROR)
-    else
-      if #lines == 0 then
-        lines = { "[No extractable text — PDF may be image-based]" }
-      end
-      vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
-      vim.bo[args.buf].modified = false
-      vim.bo[args.buf].readonly = true
-      vim.bo[args.buf].filetype = "text"
+      return
     end
+    if #lines == 0 then
+      lines = pdf_ocr(pdf)
+    end
+    vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
+    vim.bo[args.buf].modified = false
+    vim.bo[args.buf].readonly = true
+    vim.bo[args.buf].filetype = "text"
   end,
 })
 
