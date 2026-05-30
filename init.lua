@@ -339,10 +339,10 @@ vim.api.nvim_create_autocmd("FileType", {
 ------------------------------------------------------------
 -- PDF viewer via pdftotext
 ------------------------------------------------------------
-vim.api.nvim_create_autocmd("BufReadPost", {
+vim.api.nvim_create_autocmd("BufReadCmd", {
   pattern = "*.pdf",
   callback = function(args)
-    local pdf = vim.fn.expand("%:p")
+    local pdf = vim.fn.expand("<afile>:p")
     local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(pdf) .. " -")
     if vim.v.shell_error == 0 then
       vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
