@@ -337,36 +337,62 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 ------------------------------------------------------------
--- PDF viewer via pdftotext (with OCR fallback for image-based PDFs)
+-- PDF viewer via pdftotext (with async OCR fallback for image-based PDFs)
 ------------------------------------------------------------
-local function pdf_ocr(pdf)
+local function pdf_populate_buf(buf, lines)
+  if not vim.api.nvim_buf_is_valid(buf) then return end
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modified = false
+  vim.bo[buf].readonly = true
+  vim.bo[buf].filetype = "text"
+end
+
+local function pdf_ocr_async(pdf, buf)
+  local tmpdir = vim.fn.tempname()
+  vim.fn.mkdir(tmpdir, "p")
+
+  local cmd
   if vim.fn.executable("ocrmypdf") == 1 then
-    vim.notify("OCR running with ocrmypdf, please wait…", vim.log.levels.INFO)
-    local tmp = vim.fn.tempname() .. ".pdf"
-    vim.fn.system("ocrmypdf --force-ocr " .. vim.fn.shellescape(pdf) .. " " .. vim.fn.shellescape(tmp) .. " 2>/dev/null")
-    if vim.v.shell_error == 0 then
-      local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(tmp) .. " -")
-      vim.fn.delete(tmp)
-      if #lines > 0 then return lines end
-    end
-  end
-
-  if vim.fn.executable("tesseract") == 1 and vim.fn.executable("pdftoppm") == 1 then
-    vim.notify("OCR running with tesseract, please wait…", vim.log.levels.INFO)
-    local tmpdir = vim.fn.tempname()
-    vim.fn.mkdir(tmpdir, "p")
-    vim.fn.system("pdftoppm -r 300 " .. vim.fn.shellescape(pdf) .. " " .. vim.fn.shellescape(tmpdir .. "/page"))
-    local pages = vim.fn.glob(tmpdir .. "/page-*.ppm", false, true)
-    table.sort(pages)
-    local lines = {}
-    for _, page in ipairs(pages) do
-      vim.list_extend(lines, vim.fn.systemlist("tesseract " .. vim.fn.shellescape(page) .. " stdout 2>/dev/null"))
-    end
+    local tmppdf = tmpdir .. "/ocr.pdf"
+    cmd = string.format(
+      "ocrmypdf --force-ocr %s %s 2>/dev/null && pdftotext -nopgbrk -layout %s -",
+      vim.fn.shellescape(pdf), vim.fn.shellescape(tmppdf), vim.fn.shellescape(tmppdf)
+    )
+    vim.notify("OCR in progress (ocrmypdf)…", vim.log.levels.INFO)
+  elseif vim.fn.executable("tesseract") == 1 and vim.fn.executable("pdftoppm") == 1 then
+    cmd = string.format(
+      "pdftoppm -r 300 %s %s/page 2>/dev/null && for f in %s/page-*.ppm; do tesseract \"$f\" stdout 2>/dev/null; done",
+      vim.fn.shellescape(pdf), tmpdir, tmpdir
+    )
+    vim.notify("OCR in progress (tesseract)…", vim.log.levels.INFO)
+  else
     vim.fn.delete(tmpdir, "rf")
-    if #lines > 0 then return lines end
+    pdf_populate_buf(buf, { "[No OCR tools available — install ocrmypdf or tesseract+pdftoppm]" })
+    return
   end
 
-  return { "[No extractable text — install ocrmypdf or tesseract+pdftoppm for OCR support]" }
+  local ocr_lines = {}
+  vim.fn.jobstart({ "sh", "-c", cmd }, {
+    stdout_buffered = true,
+    on_stdout = function(_, data)
+      if data then
+        ocr_lines = data
+        if ocr_lines[#ocr_lines] == "" then table.remove(ocr_lines) end
+      end
+    end,
+    on_exit = function(_, exit_code)
+      vim.fn.delete(tmpdir, "rf")
+      vim.schedule(function()
+        if exit_code == 0 and #ocr_lines > 0 then
+          pdf_populate_buf(buf, ocr_lines)
+          vim.notify("OCR complete", vim.log.levels.INFO)
+        else
+          pdf_populate_buf(buf, { "[OCR failed or produced no output]" })
+        end
+      end)
+    end,
+  })
 end
 
 vim.api.nvim_create_autocmd("BufReadCmd", {
@@ -380,12 +406,11 @@ vim.api.nvim_create_autocmd("BufReadCmd", {
       return
     end
     if #lines == 0 then
-      lines = pdf_ocr(pdf)
+      pdf_populate_buf(args.buf, { "[OCR in progress…]" })
+      pdf_ocr_async(pdf, args.buf)
+      return
     end
-    vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
-    vim.bo[args.buf].modified = false
-    vim.bo[args.buf].readonly = true
-    vim.bo[args.buf].filetype = "text"
+    pdf_populate_buf(args.buf, lines)
   end,
 })
 
