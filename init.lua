@@ -345,13 +345,16 @@ vim.api.nvim_create_autocmd("BufReadCmd", {
     local pdf = vim.fn.fnamemodify(args.file, ":p")
     vim.bo[args.buf].modifiable = true
     local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(pdf) .. " -")
-    if vim.v.shell_error == 0 and #lines > 0 then
+    if vim.v.shell_error ~= 0 then
+      vim.notify("pdftotext failed (exit=" .. vim.v.shell_error .. "): " .. pdf, vim.log.levels.ERROR)
+    else
+      if #lines == 0 then
+        lines = { "[No extractable text — PDF may be image-based]" }
+      end
       vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
       vim.bo[args.buf].modified = false
       vim.bo[args.buf].readonly = true
       vim.bo[args.buf].filetype = "text"
-    else
-      vim.notify("pdftotext failed (exit=" .. vim.v.shell_error .. " lines=" .. #lines .. "): " .. pdf, vim.log.levels.ERROR)
     end
   end,
 })
