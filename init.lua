@@ -337,6 +337,25 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 ------------------------------------------------------------
+-- PDF viewer via pdftotext
+------------------------------------------------------------
+vim.api.nvim_create_autocmd("BufReadPost", {
+  pattern = "*.pdf",
+  callback = function(args)
+    local pdf = vim.fn.expand("%:p")
+    local lines = vim.fn.systemlist("pdftotext -nopgbrk -layout " .. vim.fn.shellescape(pdf) .. " -")
+    if vim.v.shell_error == 0 then
+      vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, lines)
+      vim.bo[args.buf].modified = false
+      vim.bo[args.buf].readonly = true
+      vim.bo[args.buf].filetype = "text"
+    else
+      vim.notify("pdftotext failed: " .. pdf, vim.log.levels.ERROR)
+    end
+  end,
+})
+
+------------------------------------------------------------
 -- Colorscheme
 ------------------------------------------------------------
 vim.cmd([[colorscheme gruvbox]])
